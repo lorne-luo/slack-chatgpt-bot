@@ -39,7 +39,7 @@ def handle_message_events(body, logger):
 
     # Check ChatGPT
     openai.api_key = OPENAI_API_KEY
-    response = openai.Completion.create(
+    response = openai.ChatCompletion.create(
         engine=chatgpt_engine,
         prompt=prompt,
         max_tokens=4096,
