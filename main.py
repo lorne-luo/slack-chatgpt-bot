@@ -12,7 +12,6 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack import WebClient
 from slack_bolt import App
 
-
 SLACK_BOT_TOKEN = env.str("SLACK_BOT_TOKEN")
 SLACK_APP_TOKEN = env.str("SLACK_APP_TOKEN")
 OPENAI_API_KEY = env.str("OPENAI_API_KEY")
@@ -30,7 +29,7 @@ def handle_message_events(body, logger):
     prompt = str(body["event"]["text"]).split(">")[1]
 
     # Log message
-    logging.info('Msg Received: '+prompt)
+    logging.info('Msg Received: ' + prompt)
 
     # Let thre user know that we are busy with the request
     # response = client.chat_postMessage(channel=body["event"]["channel"],
@@ -39,18 +38,19 @@ def handle_message_events(body, logger):
 
     # Check ChatGPT
     openai.api_key = OPENAI_API_KEY
-    response = openai.ChatCompletion.create(
-        engine=chatgpt_engine,
-        prompt=prompt,
-        max_tokens=4096,
-        n=1,
-        stop=None,
-        temperature=0.5).choices[0].text
+    response = openai.ChatCompletion.create(  # 1. Change the function Completion to ChatCompletion
+        model='gpt-3.5-turbo',
+        messages=[
+            {'role': 'user', 'content': prompt}
+        ],
+        temperature=0
+    )
+    content = response['choices'][0]['message']['content']
 
     # Reply to thread
     api_response = client.chat_postMessage(channel=body["event"]["channel"],
-                                       thread_ts=body["event"]["event_ts"],
-                                       text=response)
+                                           thread_ts=body["event"]["event_ts"],
+                                           text=content)
 
 
 if __name__ == "__main__":
