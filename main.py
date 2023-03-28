@@ -1,5 +1,6 @@
 # from https://medium.com/@alexandre.tkint/integrate-openais-chatgpt-within-slack-a-step-by-step-approach-bea43400d311
 import logging
+import traceback
 from pprint import pprint
 
 from expiringdict import ExpiringDict
@@ -17,7 +18,9 @@ from slack_bolt import App
 SLACK_BOT_TOKEN = env.str("SLACK_BOT_TOKEN")
 SLACK_APP_TOKEN = env.str("SLACK_APP_TOKEN")
 OPENAI_API_KEY = env.str("OPENAI_API_KEY")
-chatgpt_engine = "gpt-3.5-turbo"
+MY_USER_ID = env.str("MY_USER_ID", None)
+CHATGPT_CHANNEL_PREFIX = 'chatgpt_'.lower()
+CHATGPT_ENGINE_NAME = "gpt-3.5-turbo"
 
 # Event API & Web API
 app = App(token=SLACK_BOT_TOKEN)
@@ -39,8 +42,13 @@ def is_chatgpt_channel(channel_id):
         return True, chatgpt_channels[channel_id]
 
     channel_infos = client.conversations_info(channel=channel_id)
+    logging.debug(channel_infos)
 
-    if channel_infos['channel']['name_normalized'].lower().startswith('chatgpt_'):
+    if not channel_infos['channel']['is_member']:
+        # chatgpt bot not join this channel yet
+        client.conversations_join(channel=channel_id)
+
+    if channel_infos['channel']['name_normalized'].lower().startswith(CHATGPT_CHANNEL_PREFIX):
         channel_topic = channel_infos.get('channel', '').get('topic', '').get('value', '')
         channel_description = channel_infos.get('channel', '').get('purpose', '').get('value', '')
         chatgpt_channels[channel_id] = f"{channel_topic}. {channel_description}"
@@ -86,8 +94,12 @@ def chatgpt_channel(event, logger):
 
         is_chatgpt, channel_topic = is_chatgpt_channel(channel_id)
         if is_chatgpt:
-            chat_history = get_chat_history(channel_id, channel_topic)
-            response_text = request_chatgpt(prompt, chat_history)
+            try:
+                chat_history = get_chat_history(channel_id, channel_topic)
+                response_text = request_chatgpt(prompt, chat_history)
+            except Exception as ex:
+                response_text = 'Error Raised:\n\n'
+                response_text += traceback.format_exc()
             client.chat_postMessage(channel=channel_id,
                                     text=response_text)
 
@@ -115,8 +127,6 @@ def handle_message_events(body, logger):
     channel_id = body["event"].get("channel", None)
 
     chat_history = get_chat_history(channel_id)
-    pprint('chat_history')
-    pprint(chat_history)
     response_text = request_chatgpt(prompt, chat_history)
     client.chat_postMessage(channel=channel_id,
                             text=response_text)
