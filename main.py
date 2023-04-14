@@ -22,6 +22,7 @@ OPENAI_API_KEY = env.str("OPENAI_API_KEY")
 MY_USER_ID = env.str("MY_USER_ID", None)
 CHATGPT_CHANNEL_PREFIX = 'chatgpt_'.lower()
 CHATGPT_ENGINE_NAME = "gpt-3.5-turbo"
+MAX_TOKEN = 4097
 
 # Event API & Web API
 app = App(token=SLACK_BOT_TOKEN)
@@ -59,7 +60,7 @@ def is_chatgpt_channel(channel_id):
     return False, None
 
 
-def get_chat_history(channel_id, topic='', limit=20):
+def get_chat_history(channel_id, topic='', limit=10):
     """get chat history by channel id, format as chatgpt wanted"""
     chat_context = []
 
@@ -69,7 +70,7 @@ def get_chat_history(channel_id, topic='', limit=20):
     for message in messages:
         role = 'assistant' if 'bot_id' in message else 'user'
         content = message['text']
-        if not content.startswith('*Error:*'):
+        if not content.startswith('Error:'):
             chat_context.append({"role": role, "content": content})
 
     chat_context = [
