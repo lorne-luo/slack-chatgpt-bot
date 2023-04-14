@@ -11,6 +11,7 @@ env = Env()
 env.read_env()
 
 import openai
+from openai.error import RateLimitError, InvalidRequestError
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack import WebClient
 from slack_bolt import App
@@ -68,7 +69,8 @@ def get_chat_history(channel_id, topic='', limit=20):
     for message in messages:
         role = 'assistant' if 'bot_id' in message else 'user'
         content = message['text']
-        chat_context.append({"role": role, "content": content})
+        if not content.startswith('*Error:*'):
+            chat_context.append({"role": role, "content": content})
 
     chat_context = [
                        {"role": "system", "content": topic},
@@ -97,8 +99,10 @@ def chatgpt_channel(event, logger):
             try:
                 chat_history = get_chat_history(channel_id, channel_topic)
                 response_text = request_chatgpt(prompt, chat_history)
+            except (RateLimitError, InvalidRequestError) as ex:
+                response_text = f'*Error:* {ex}\n\n'
             except Exception as ex:
-                response_text = 'Error Raised:\n\n'
+                response_text = f'*Error:* {ex}\n\n'
                 response_text += traceback.format_exc()
             client.chat_postMessage(channel=channel_id,
                                     text=response_text)
