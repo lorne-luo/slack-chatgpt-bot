@@ -20,7 +20,7 @@ SLACK_BOT_TOKEN = env.str("SLACK_BOT_TOKEN")
 SLACK_APP_TOKEN = env.str("SLACK_APP_TOKEN")
 OPENAI_API_KEY = env.str("OPENAI_API_KEY")
 MY_USER_ID = env.str("MY_USER_ID", None)
-CHATGPT_CHANNEL_PREFIX = 'chatgpt_'.lower()
+CHATGPT_CHANNEL_PREFIXES = ('chatgpt_', 'gpt')
 CHATGPT_ENGINE_NAME = "gpt-3.5-turbo"
 MAX_TOKEN = 4097
 
@@ -50,7 +50,9 @@ def is_chatgpt_channel(channel_id):
         # chatgpt bot not join this channel yet
         client.conversations_join(channel=channel_id)
 
-    if channel_infos['channel']['name_normalized'].lower().startswith(CHATGPT_CHANNEL_PREFIX):
+    channel_name = channel_infos['channel']['name_normalized'].lower()
+
+    if any([channel_name.startswith(prefix.lower()) for prefix in CHATGPT_CHANNEL_PREFIXES]):
         channel_topic = channel_infos.get('channel', '').get('topic', '').get('value', '')
         channel_description = channel_infos.get('channel', '').get('purpose', '').get('value', '')
         chatgpt_channels[channel_id] = f"{channel_topic}. {channel_description}"
