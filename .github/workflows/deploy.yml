@@ -1,0 +1,21 @@
+name: Deploy to oracle4.luotao.net
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: executing remote ssh commands using ssh key
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_HOST_USERNAME }}
+          key: ${{ secrets.ORACLE4_DEPLOY_KEY }}
+          script: /opt/slack-chatgpt-bot && git pull && sudo systemctl restart slack-chatgpt.service
