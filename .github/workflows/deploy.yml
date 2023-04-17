@@ -18,4 +18,4 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_HOST_USERNAME }}
           key: ${{ secrets.ORACLE4_DEPLOY_KEY }}
-          script: /opt/slack-chatgpt-bot && git pull && sudo systemctl restart slack-chatgpt.service
+          script: cd /opt/slack-chatgpt-bot && git pull && sudo systemctl restart slack-chatgpt.service
