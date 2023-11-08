@@ -1,20 +1,17 @@
 # from https://medium.com/@alexandre.tkint/integrate-openais-chatgpt-within-slack-a-step-by-step-approach-bea43400d311
 import logging
 import traceback
-from pprint import pprint
-
 from expiringdict import ExpiringDict
-
 from environs import Env
-
-env = Env()
-env.read_env()
-
 import openai
-from openai.error import RateLimitError, InvalidRequestError
+from openai import RateLimitError, BadRequestError, OpenAI
+from openai.types.chat import ChatCompletion
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack import WebClient
 from slack_bolt import App
+
+env = Env()
+env.read_env()
 
 SLACK_BOT_TOKEN = env.str("SLACK_BOT_TOKEN")
 SLACK_APP_TOKEN = env.str("SLACK_APP_TOKEN")
@@ -27,6 +24,7 @@ MAX_TOKEN = 4097
 # Event API & Web API
 app = App(token=SLACK_BOT_TOKEN)
 client = WebClient(SLACK_BOT_TOKEN)
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 chatgpt_channels = ExpiringDict(max_len=100, max_age_seconds=8 * 3600)
 
@@ -102,7 +100,7 @@ def chatgpt_channel(event, logger):
             try:
                 chat_history = get_chat_history(channel_id, channel_topic)
                 response_text = request_chatgpt(prompt, chat_history)
-            except (RateLimitError, InvalidRequestError) as ex:
+            except (RateLimitError, BadRequestError) as ex:
                 response_text = f'*Error:* {ex}\n\n'
             except Exception as ex:
                 response_text = f'*Error:* {ex}\n\n'
@@ -112,15 +110,15 @@ def chatgpt_channel(event, logger):
 
 
 def request_chatgpt(text, context):
-    openai.api_key = OPENAI_API_KEY
-    response = openai.ChatCompletion.create(  # 1. Change the function Completion to ChatCompletion
+    response = openai_client.chat.completions.create(  # 1. Change the function Completion to ChatCompletion
         model='gpt-3.5-turbo',
         messages=context + [
             {'role': 'user', 'content': text}
         ],
-        temperature=0
+        temperature=0.8,
+        top_p=0.8,
     )
-    content = response['choices'][0]['message']['content']
+    content = response.choices[0].message.content
     return content
 
 

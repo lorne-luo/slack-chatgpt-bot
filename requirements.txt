@@ -1,6 +1,7 @@
-openai
+openai==1.1.1
 slack-bolt 
 slack
 environs
 expiringdict
-
+redis[hiredis]==5.0.1
+aiohttp
