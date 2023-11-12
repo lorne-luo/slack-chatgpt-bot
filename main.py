@@ -5,33 +5,32 @@ from expiringdict import ExpiringDict
 from environs import Env
 import openai
 from openai import RateLimitError, BadRequestError, OpenAI
-from openai.types.chat import ChatCompletion
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack import WebClient
 from slack_bolt import App
-
-env = Env()
-env.read_env()
-
-SLACK_BOT_TOKEN = env.str("SLACK_BOT_TOKEN")
-SLACK_APP_TOKEN = env.str("SLACK_APP_TOKEN")
-OPENAI_API_KEY = env.str("OPENAI_API_KEY")
-MY_USER_ID = env.str("MY_USER_ID", None)
-CHATGPT_CHANNEL_PREFIXES = ('chatgpt_', 'gpt')
-CHATGPT_ENGINE_NAME = "gpt-3.5-turbo"
-MAX_TOKEN = 4097
+import config
+# env = Env()
+# env.read_env()
+#
+# SLACK_BOT_TOKEN = env.str("SLACK_BOT_TOKEN")
+# SLACK_APP_TOKEN = env.str("SLACK_APP_TOKEN")
+# OPENAI_API_KEY = env.str("OPENAI_API_KEY")
+# MY_USER_ID = env.str("MY_USER_ID", None)
+# CHATGPT_CHANNEL_PREFIXES = ('chatgpt_', 'gpt_', 'gpt4_')
+# DEFAULT_CHATGPT_MODEL = "gpt-3.5-turbo"
+# MAX_TOKEN = 4097
 
 # Event API & Web API
-app = App(token=SLACK_BOT_TOKEN)
-client = WebClient(SLACK_BOT_TOKEN)
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
+app = App(token=config.SLACK_BOT_USER_OAUTH_TOKEN)
+client = WebClient(config.SLACK_BOT_USER_OAUTH_TOKEN)
+openai_client = OpenAI(api_key=config.OPENAI_API_KEY)
 
 chatgpt_channels = ExpiringDict(max_len=100, max_age_seconds=8 * 3600)
 
 
 def is_self(user_id):
     """is your self"""
-    return user_id == MY_USER_ID
+    return user_id == config.MY_SLACK_USER_ID
 
 
 def is_chatgpt_channel(channel_id):
@@ -50,7 +49,7 @@ def is_chatgpt_channel(channel_id):
 
     channel_name = channel_infos['channel']['name_normalized'].lower()
 
-    if any([channel_name.startswith(prefix.lower()) for prefix in CHATGPT_CHANNEL_PREFIXES]):
+    if any([channel_name.startswith(prefix.lower()) for prefix in config.CHATGPT_CHANNEL_PREFIXES]):
         channel_topic = channel_infos.get('channel', '').get('topic', '').get('value', '')
         channel_description = channel_infos.get('channel', '').get('purpose', '').get('value', '')
         chatgpt_channels[channel_id] = f"{channel_topic}. {channel_description}"
@@ -138,4 +137,4 @@ def handle_message_events(body, logger):
 
 
 if __name__ == "__main__":
-    SocketModeHandler(app, SLACK_APP_TOKEN).start()
+    SocketModeHandler(app, config.SLACK_CHATGPT_BOT_TOKEN).start()
