@@ -9,16 +9,6 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack import WebClient
 from slack_bolt import App
 import config
-# env = Env()
-# env.read_env()
-#
-# SLACK_BOT_TOKEN = env.str("SLACK_BOT_TOKEN")
-# SLACK_APP_TOKEN = env.str("SLACK_APP_TOKEN")
-# OPENAI_API_KEY = env.str("OPENAI_API_KEY")
-# MY_USER_ID = env.str("MY_USER_ID", None)
-# CHATGPT_CHANNEL_PREFIXES = ('chatgpt_', 'gpt_', 'gpt4_')
-# DEFAULT_CHATGPT_MODEL = "gpt-3.5-turbo"
-# MAX_TOKEN = 4097
 
 # Event API & Web API
 app = App(token=config.SLACK_BOT_USER_OAUTH_TOKEN)
@@ -38,7 +28,7 @@ def is_chatgpt_channel(channel_id):
     return existing bool and channel topic
     """
     if channel_id in chatgpt_channels:
-        return True, chatgpt_channels[channel_id]
+        return chatgpt_channels[channel_id]['model'], chatgpt_channels[channel_id]['topic']
 
     channel_infos = client.conversations_info(channel=channel_id)
     logging.debug(channel_infos)
@@ -52,9 +42,19 @@ def is_chatgpt_channel(channel_id):
     if any([channel_name.startswith(prefix.lower()) for prefix in config.CHATGPT_CHANNEL_PREFIXES]):
         channel_topic = channel_infos.get('channel', '').get('topic', '').get('value', '')
         channel_description = channel_infos.get('channel', '').get('purpose', '').get('value', '')
-        chatgpt_channels[channel_id] = f"{channel_topic}. {channel_description}"
 
-        return True, chatgpt_channels[channel_id]
+        gpt_model = 'gpt-4-1106-preview' if channel_name.startswith('gpt4_') else config.DEFAULT_CHATGPT_MODEL
+        topic = f"{channel_topic}. {channel_description}"
+        chatgpt_channels[channel_id] = {"topic": topic, "model": gpt_model}
+        return gpt_model, topic
+
+    if any([channel_name.startswith(prefix.lower()) for prefix in config.CODE_INTERPRETER_PREFIXES]):
+        channel_topic = channel_infos.get('channel', '').get('topic', '').get('value', '')
+        channel_description = channel_infos.get('channel', '').get('purpose', '').get('value', '')
+        gpt_model = 'code_interpreter'
+        topic = f"{channel_topic}. {channel_description}"
+        chatgpt_channels[channel_id] = {"topic": topic, "model": gpt_model}
+        return gpt_model, topic
 
     return False, None
 
@@ -94,23 +94,30 @@ def chatgpt_channel(event, logger):
     channel_id = event.get("channel", None)
     if channel_type == 'channel' and channel_id:
 
-        is_chatgpt, channel_topic = is_chatgpt_channel(channel_id)
-        if is_chatgpt:
+        gpt_model, channel_topic = is_chatgpt_channel(channel_id)
+        if not gpt_model:
+            return
+
+        if gpt_model.startswith('gpt-'):
+            # normal gpt 3.5 or 4
             try:
-                chat_history = get_chat_history(channel_id, channel_topic)
-                response_text = request_chatgpt(prompt, chat_history)
+                chat_history = get_chat_history(channel_id, channel_topic, limit=0)
+                response_text = request_chatgpt(prompt, chat_history, gpt_model)
             except (RateLimitError, BadRequestError) as ex:
                 response_text = f'*Error:* {ex}\n\n'
             except Exception as ex:
                 response_text = f'*Error:* {ex}\n\n'
                 response_text += traceback.format_exc()
-            client.chat_postMessage(channel=channel_id,
-                                    text=response_text)
+        elif gpt_model == 'code_interpreter':
+            response_text = 'Not implemented'
+        else:
+            raise f'Uknown gpt model {gpt_model}'
+        client.chat_postMessage(channel=channel_id, text=response_text)
 
 
-def request_chatgpt(text, context):
+def request_chatgpt(text, context, model=config.DEFAULT_CHATGPT_MODEL):
     response = openai_client.chat.completions.create(  # 1. Change the function Completion to ChatCompletion
-        model='gpt-3.5-turbo',
+        model=model,
         messages=context + [
             {'role': 'user', 'content': text}
         ],

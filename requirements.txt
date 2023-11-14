@@ -5,3 +5,4 @@ environs
 expiringdict
 redis[hiredis]==5.0.1
 aiohttp
+addict
