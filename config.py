@@ -18,7 +18,7 @@ OPENAI_API_KEY = configs.get("OPENAI_API_KEY")
 MY_SLACK_USER_ID = configs.get("MY_SLACK_USER_ID")
 
 CHATGPT_CHANNEL_PREFIXES = ('chatgpt_', 'gpt_', 'gpt4_')
-CODE_INTERPRETER_PREFIXES = ('code_',)
+CODE_INTERPRETER_PREFIXES = ('code_', 'assist_',)
 DEFAULT_CHATGPT_MODEL = configs.get("DEFAULT_CHATGPT_MODEL", "gpt-3.5-turbo")
 CHATGPT_MAX_TOKEN = configs.get("CHATGPT_MAX_TOKEN", 4097)
 

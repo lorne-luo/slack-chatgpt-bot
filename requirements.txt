@@ -1,4 +1,4 @@
-openai==1.1.1
+openai==1.2.4
 slack-bolt 
 slack
 environs
