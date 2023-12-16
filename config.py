@@ -1,4 +1,4 @@
-from redis import Redis
+from redis import Redis, ConnectionPool
 from environs import Env
 
 env = Env()
@@ -9,8 +9,11 @@ redis_port = 12452
 REDIS_CLOUD_PASSWORD = env.str("REDIS_CLOUD_PASSWORD")
 APP = env.str("APP")
 
-redis_client = Redis(host=redis_host, port=redis_port, password=REDIS_CLOUD_PASSWORD, decode_responses=True)
+pool = ConnectionPool(host=redis_host, port=redis_port, password=REDIS_CLOUD_PASSWORD, max_connections=1,
+                      decode_responses=True)
+redis_client = Redis(connection_pool=pool)
 configs = redis_client.hgetall(APP + ':configs')
+redis_client.close()
 
 SLACK_CHATGPT_BOT_TOKEN = configs.get("SLACK_CHATGPT_BOT_TOKEN")
 SLACK_BOT_USER_OAUTH_TOKEN = configs.get("SLACK_BOT_USER_OAUTH_TOKEN")
